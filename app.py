@@ -50,6 +50,80 @@ from scrapers.mattioli import handle_mattioli
 from scrapers.pomellato import handle_pomellato
 from scrapers.dior import handle_dior
 
+
+from scrapers.helzberg import handle_helzberg
+from scrapers.fredmeyer import handle_fredmeyer
+from scrapers.jcpenney import handle_jcpenney
+from scrapers.macys import handle_macys
+from scrapers.reeds import handle_reeds
+from scrapers.walmart import handle_walmart
+from scrapers.benbridge import handle_benbridge
+from scrapers.finks import handle_finks
+from scrapers.smilingrocks import handle_smilingrocks
+from scrapers.jcojewellery import handle_jcojewellery
+from scrapers.diamonds import handle_77diamonds
+from scrapers.hannoush import handle_hannoush
+from scrapers.anitako import handle_anitako
+from scrapers.jonehardy import handle_jonehardy
+from scrapers.jacobandco import handle_jacobandco
+from scrapers.jennifermeyer import handle_jennifermeyer
+from scrapers.jacquieaiche import handle_jacquieaiche
+from scrapers.tacori import handle_tacori
+from scrapers.davidyurman import handle_davidyurman
+from scrapers.chopard import handle_chopard
+from scrapers.vancleefarpels import handle_vancleefarpels
+from scrapers.chanel import handle_chanel
+from scrapers.buccellati import handle_buccellati
+from scrapers.graff import handle_graff
+from scrapers.mejuri import handle_mejuri
+from scrapers.boucheron import handle_boucheron
+from scrapers.chaumet import handle_chaumet
+from scrapers.brilliantearth import handle_brilliantearth
+from scrapers.bulgari import handle_bulgari
+from scrapers.cartier import handle_cartier
+from scrapers.harrods import handle_harrods
+from scrapers.piaget import handle_piaget
+from scrapers.forevermark import handle_forevermark
+from scrapers.boochier import handle_boochier
+from scrapers.birks import handle_birks
+from scrapers.facets import handle_facets
+from scrapers.eastwestgemco import handle_eastwestgemco
+from scrapers.laurenbjewelry1 import handle_laurenbjewelry1
+from scrapers.ringconcierge import handle_ringconcierge
+from scrapers.ajaffe import handle_ajaffe
+from scrapers.marcobicego import handle_marcobicego
+from scrapers.stephaniegottlieb import handle_stephaniegottlieb
+from scrapers.vrai import handle_vrai
+from scrapers.jadetrau import handle_jadetrau
+from scrapers.heartsonfire import handle_heartsonfire
+from scrapers.ferkos import handle_ferkos
+from scrapers.fraserhart import handle_fraserhart
+from scrapers.fields import handle_fields
+from scrapers.warrenjames import handle_warrenjames
+from scrapers.goldsmiths import handle_goldsmiths
+from scrapers.beaverbrooks import handle_beaverbrooks
+from scrapers.diamondsfactory import handle_diamondsfactory
+from scrapers.londonjewelers import handle_londonjewelers
+from scrapers.davidmarshalllondon import handle_davidmarshalllondon
+from scrapers.monicavinader import handle_monicavinader
+from scrapers.boodles import handle_boodles
+from scrapers.pandora import handle_pandora
+from scrapers.daisyjewellery import handle_daisyjewellery
+from scrapers.missoma import handle_missoma
+from scrapers.mariablack import handle_mariablack
+from scrapers.astleyclarke import handle_astleyclarke
+from scrapers.edgeofember import handle_edgeofember
+from scrapers.mateo import handle_mateo
+from scrapers.bybonniejewelry import handle_bybonniejewelry
+from scrapers.michaelhill import handle_michaelhill
+from scrapers.prouds import handle_prouds
+from scrapers.goldmark import handle_goldmark
+from scrapers.shiels import handle_shiels
+from scrapers.wallacebishop import handle_wallacebishop
+from scrapers.thediamondstore import handle_thediamondstore
+from scrapers.rosssimons import handle_rosssimons
+from scrapers.mazzucchellis import handle_mazzucchellis
+
 # Utility modules
 from utils import log_event
 from limit_checker import check_daily_limit
@@ -159,6 +233,80 @@ def fetch_data():
         "www.dior.com": handle_dior,
         "www.apart.eu": handle_apart,
         
+        "www.helzberg.com": handle_helzberg,
+        "www.fredmeyerjewelers.com": handle_fredmeyer,
+        "www.jcpenney.com": handle_jcpenney,
+        "www.macys.com": handle_macys,
+        "www.reeds.com": handle_reeds,
+        "www.walmart.com": handle_walmart,
+        "www.benbridge.com": handle_benbridge,
+        "www.finks.com": handle_finks,
+        "smilingrocks.com": handle_smilingrocks,
+        "www.jcojewellery.com": handle_jcojewellery,
+        "www.77diamonds.com": handle_77diamonds,
+        "www.hannoush.com": handle_hannoush,
+        "www.anitako.com": handle_anitako,
+        "johnhardy.com": handle_jonehardy,
+        "jacobandco.shop": handle_jacobandco,
+        "jennifermeyer.com": handle_jennifermeyer,
+        "jacquieaiche.com": handle_jacquieaiche,
+        "www.tacori.com": handle_tacori,
+        "www.davidyurman.com": handle_davidyurman,
+        "www.chopard.com": handle_chopard,
+        "www.vancleefarpels.com": handle_vancleefarpels,
+        "www.chanel.com": handle_chanel,
+        "www.buccellati.com": handle_buccellati,
+        "www.graff.com": handle_graff,
+        "mejuri.com": handle_mejuri,
+        "www.boucheron.com": handle_boucheron,
+        "www.chaumet.com": handle_chaumet,
+        "www.brilliantearth.com": handle_brilliantearth,
+        "www.bulgari.com": handle_bulgari,
+        "www.cartier.com": handle_cartier,
+        "www.harrods.com": handle_harrods,
+        "www.piaget.com": handle_piaget,
+        "www.forevermark.com": handle_forevermark,
+        "boochier.com": handle_boochier,
+        "www.birks.com": handle_birks,
+        "64facets.com": handle_facets,
+        "eastwestgemco.com": handle_eastwestgemco,
+        "in.louisvuitton.com": handle_laurenbjewelry1,
+        "ringconcierge.com": handle_ringconcierge,
+        "ajaffe.com": handle_ajaffe,
+        "marcobicego.com": handle_marcobicego,
+        "stephaniegottlieb.com": handle_stephaniegottlieb,
+        "www.vrai.com": handle_vrai,
+        "jadetrau.com": handle_jadetrau,
+        "www.heartsonfire.com": handle_heartsonfire,
+        "ferkosfinejewelry.com": handle_ferkos,
+        "www.fraserhart.co.uk": handle_fraserhart,
+        "www.fields.ie": handle_fields,
+        "www.warrenjames.co.uk": handle_warrenjames,
+        "www.goldsmiths.co.uk": handle_goldsmiths,
+        "www.beaverbrooks.co.uk": handle_beaverbrooks,
+        "www.diamondsfactory.co.uk": handle_diamondsfactory,
+        "www.londonjewelers.com": handle_londonjewelers,
+        "www.davidmarshalllondon.com": handle_davidmarshalllondon,
+        "www.monicavinader.com": handle_monicavinader,
+        "www.boodles.com": handle_boodles,
+        "us.pandora.net": handle_pandora,
+        "www.daisyjewellery.com": handle_daisyjewellery,
+        "www.missoma.com": handle_missoma,
+        "www.maria-black.com": handle_mariablack,
+        "www.astleyclarke.com": handle_astleyclarke,
+        "edgeofember.com": handle_edgeofember,
+        "mateonewyork.com": handle_mateo,
+        "bybonniejewelry.com": handle_bybonniejewelry,
+        "www.michaelhill.com.au": handle_michaelhill,
+        "www.prouds.com.au": handle_prouds,
+        "www.goldmark.com.au": handle_goldmark,
+        "www.shiels.com.au": handle_shiels,
+        "www.wallacebishop.com.au": handle_wallacebishop,
+        "www.thediamondstore.co.uk": handle_thediamondstore,
+        "www.ross-simons.com": handle_rosssimons,
+        "mazzucchellis.com.au": handle_mazzucchellis,
+        
+        
     }
 
     handler = handler_map.get(domain)
@@ -199,8 +347,8 @@ def get_data():
 def product_view():
     
     products = get_all_scraped_products()
-    print(products)
-    print(type(products))
+    # print(products)
+    # print(type(products))
     return render_template("product_view.html", products=products)
 
 

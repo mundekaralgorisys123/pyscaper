@@ -123,6 +123,7 @@ from scrapers.wallacebishop import handle_wallacebishop
 from scrapers.thediamondstore import handle_thediamondstore
 from scrapers.rosssimons import handle_rosssimons
 from scrapers.mazzucchellis import handle_mazzucchellis
+from scrapers.zamels import handle_zamels
 
 # Utility modules
 from utils import log_event
@@ -305,6 +306,7 @@ def fetch_data():
         "www.thediamondstore.co.uk": handle_thediamondstore,
         "www.ross-simons.com": handle_rosssimons,
         "mazzucchellis.com.au": handle_mazzucchellis,
+        "www.zamels.com.au": handle_zamels,
         
         
     }
@@ -353,5 +355,5 @@ def product_view():
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
+    app.run(host="0.0.0.0", port=5008)
     # app.run(debug=True, port=5000)

@@ -18,6 +18,8 @@ from playwright.async_api import async_playwright, TimeoutError, Error
 from utils import get_public_ip, log_event, sanitize_filename
 from database import insert_into_db
 from limit_checker import update_product_count
+import json
+import urllib
 
 # Load environment
 load_dotenv()
@@ -25,7 +27,7 @@ PROXY_URL = os.getenv("PROXY_URL")
 
 # Flask and paths
 app = Flask(__name__)
-BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 EXCEL_DATA_PATH = os.path.join(app.root_path, 'static', 'ExcelData')
 IMAGE_SAVE_PATH = os.path.join(BASE_DIR, 'static', 'Images')
 
@@ -41,27 +43,19 @@ def resize_image(image_data, max_size=(100, 100)):
         log_event(f"Error resizing image: {e}")
         return image_data
 
-def modify_image_url(image_url):
-    if not image_url or image_url == "N/A":
-        return image_url
-    
-    modified_url = "https:"+image_url
-    return modified_url 
-
 
 # Async image downloader
 async def download_image_async(image_url, product_name, timestamp, image_folder, unique_id, retries=3):
     if not image_url or image_url == "N/A":
         return "N/A"
 
-    image_filename = f"{unique_id}_{timestamp}.jpg"
+    image_filename = f"{unique_id}_{timestamp}.png"
     image_full_path = os.path.join(image_folder, image_filename)
-    modified_url = modify_image_url(image_url)
 
     async with httpx.AsyncClient(timeout=10.0) as client:
         for attempt in range(retries):
             try:
-                response = await client.get(modified_url)
+                response = await client.get(image_url)
                 response.raise_for_status()
                 with open(image_full_path, "wb") as f:
                     f.write(response.content)
@@ -75,14 +69,27 @@ async def download_image_async(image_url, product_name, timestamp, image_folder,
 def random_delay(min_sec=1, max_sec=3):
     time.sleep(random.uniform(min_sec, max_sec))
 
+# Scroll to bottom of page to load all products
+async def scroll_to_bottom(page):
+    last_height = await page.evaluate("document.body.scrollHeight")
+    while True:
+        await page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
+        await asyncio.sleep(random.uniform(1, 3))  # Random delay between scrolls
+        
+        # Check if we've reached the bottom
+        new_height = await page.evaluate("document.body.scrollHeight")
+        if new_height == last_height:
+            break
+        last_height = new_height
+
 # Reliable page.goto wrapper
 async def safe_goto_and_wait(page, url, retries=3):
     for attempt in range(retries):
         try:
             print(f"[Attempt {attempt + 1}] Navigating to: {url}")
             await page.goto(url, timeout=180_000, wait_until="domcontentloaded")
-            await page.wait_for_selector(".collection__main", state="attached", timeout=30000)
-            print("[Success] Product cards loaded.")
+            await page.wait_for_selector(".category-products", state="attached", timeout=30000)
+            print("[Success] Product listing loaded.")
             return
         except (Error, TimeoutError) as e:
             logging.warning(f"Attempt {attempt + 1} failed for {url}: {e}")
@@ -92,9 +99,9 @@ async def safe_goto_and_wait(page, url, retries=3):
                 raise
 
 # Main scraper function
-async def handle_diamondcollection(url, max_pages):
+async def handle_laurenbjewelry(url, max_pages=None):
     ip_address = get_public_ip()
-    logging.info(f"Scraping started for: {url} from IP: {ip_address}, max_pages: {max_pages}")
+    logging.info(f"Scraping started for: {url} from IP: {ip_address}")
 
     os.makedirs(EXCEL_DATA_PATH, exist_ok=True)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -108,122 +115,108 @@ async def handle_diamondcollection(url, max_pages):
     sheet.append(headers)
 
     all_records = []
-    filename = f"handle_diamondcollection_{datetime.now().strftime('%Y-%m-%d_%H.%M')}.xlsx"
+    filename = f"handle_laurenbjewelry_{datetime.now().strftime('%Y-%m-%d_%H.%M')}.xlsx"
     file_path = os.path.join(EXCEL_DATA_PATH, filename)
-
-    page_count = 1
-    current_url = url
-    product_count = 0
-    while current_url and (page_count <= max_pages):
-        logging.info(f"Processing page {page_count}: {current_url}")
+    load_more_clicks = 1
+    
+    while load_more_clicks <= max_pages:
         browser = None
-        context = None
-        if page_count > 1:
-            current_url = f"{url}?page={page_count}"
+        page = None
+        if load_more_clicks > 1:
+            url = f"{url}&p={load_more_clicks}"
         try:
             async with async_playwright() as p:
                 browser = await p.chromium.connect_over_cdp(PROXY_URL)
                 context = await browser.new_context()
                 page = await context.new_page()
-                page.set_default_timeout(120000)
+                page.set_default_timeout(1200000)
 
-                await safe_goto_and_wait(page, current_url)
-                log_event(f"Successfully loaded: {current_url}")
+                await safe_goto_and_wait(page, url)
+                log_event(f"Successfully loaded: {url}")
 
                 # Scroll to load all items
-                prev_count = 0
-                for _ in range(10):
-                    await page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
-                    await asyncio.sleep(random.uniform(1, 2))
-                    count = await page.locator('.collection__main').count()
-                    if count == prev_count:
-                        break
-                    prev_count = count
-
+                await scroll_to_bottom(page)
+                
                 page_title = await page.title()
                 current_date = datetime.now().strftime("%Y-%m-%d")
                 time_only = datetime.now().strftime("%H.%M")
 
-                product_wrapper = await page.query_selector("div.collection__main")
-                products = await product_wrapper.query_selector_all("product-card.product-card") if product_wrapper else []
-                logging.info(f"Total products scraped:{page_count} :{len(products)}")
+                # Get all product tiles
+                product_wrapper = await page.query_selector("ul.products-grid")
+                products = await product_wrapper.query_selector_all("li.item  ") if product_wrapper else []
+
+                logging.info(f"New products found: {len(products)}")
+                print(f"New products found: {len(products)}")
                 records = []
                 image_tasks = []
-                products = products[product_count:]  # Limit to first 10 products
-                product_count += len(products)
-                print(f"Total products on page {page_count}: {len(products)}")
+                
                 for row_num, product in enumerate(products, start=len(sheet["A"]) + 1):
-                    print(f"Processing product {row_num-1} of {len(products)}")
-                    # Extract product name
                     try:
-                        name_tag = await product.query_selector("a.product-title")
+                        # Extract product name - from product-name class
+                        name_tag = await product.query_selector(".product-name")
                         product_name = (await name_tag.inner_text()).strip() if name_tag else "N/A"
                     except Exception:
                         product_name = "N/A"
 
-                    # Extract price
                     try:
-                        price_tag = await product.query_selector("sale-price")
+                        # Extract price - from price-box span
+                        price_tag = await product.query_selector(".price-box .price")
                         price = (await price_tag.inner_text()).strip() if price_tag else "N/A"
-                        # Clean price text
-                        price = price.replace('$', '').replace(',', '').strip() if price != "N/A" else "N/A"
+                        # Clean up price string
+                        price = re.sub(r'\s+', ' ', price).strip()
                     except Exception:
                         price = "N/A"
 
-                    # Extract image URL (highest resolution)
                     try:
-                        # Get primary image
-                        image_tag = await product.query_selector("img.product-card__image--primary")
-                        if image_tag:
-                            # Get srcset attribute which contains multiple resolutions
-                            srcset = await image_tag.get_attribute("srcset")
-                            if srcset:
-                                # Extract all image URLs and their widths
-                                image_options = [url.strip().split(' ') for url in srcset.split(',')]
-                                # Sort by width (descending) and take the first one
-                                image_options.sort(key=lambda x: int(x[1].replace('w', '')), reverse=True)
-                                image_url = image_options[0][0] if image_options else "N/A"
-                            else:
-                                # Fallback to src attribute if srcset not available
-                                image_url = await image_tag.get_attribute("src") or "N/A"
-                        else:
-                            image_url = "N/A"
+                        # Extract stock status
+                        stock_tag = await product.query_selector(".stock-state span")
+                        stock_status = (await stock_tag.inner_text()).strip() if stock_tag else "N/A"
                     except Exception:
+                        stock_status = "N/A"
+
+                    # Description is same as product name in this case
+                    description = product_name
+
+                    image_url = "N/A"
+                    try:
+                        # Get all image elements
+                        img_tags = await product.query_selector_all(".product-image-block img")
+                        for img_tag in img_tags:
+                            temp_url = await img_tag.get_attribute("src") or await img_tag.get_attribute("data-src")
+                            if temp_url and "/media/catalog/product/" in temp_url:
+                                # Modify only product image URLs (skip icons/logos)
+                                image_url = temp_url.replace("small_image/210x215", "image/600x600")
+                                if image_url.startswith("//"):
+                                    image_url = f"https:{image_url}"
+                                image_url = image_url.split('?')[0]
+                                break  # Use first valid product image
+                    except Exception as e:
+                        log_event(f"Error getting image URL: {e}")
+
+                    # Only process if we have a valid product image URL
+                    if "/media/catalog/product/" not in image_url:
                         image_url = "N/A"
 
-                    # Extract metal type from product name
-                    metal_type = "N/A"
-                    gold_type_pattern = r"\b\d{1,2}(?:K|ct)?\s*(?:White|Yellow|Rose)?\s*Gold\b|\bPlatinum\b|\bSilver\b"
-                    gold_type_match = re.search(gold_type_pattern, product_name, re.IGNORECASE)
-                    metal_type = gold_type_match.group() if gold_type_match else "N/A"
+                    # Extract gold type (kt) from product name/description
+                    gold_type_pattern = r"\b\d{1,2}(?:K|kt|ct|Kt)\b|\bPlatinum\b|\bSilver\b|\bWhite Gold\b|\bYellow Gold\b|\bRose Gold\b"
+                    gold_type_match = re.search(gold_type_pattern, description, re.IGNORECASE)
+                    kt = gold_type_match.group() if gold_type_match else "Not found"
 
-                    # Extract diamond weight
-                    diamond_weight = "N/A"
+                    # Extract diamond weight from description
                     diamond_weight_pattern = r"\b\d+(\.\d+)?\s*(?:ct|tcw|carat)\b"
-                    diamond_weight_match = re.search(diamond_weight_pattern, product_name, re.IGNORECASE)
-                    if diamond_weight_match:
-                        diamond_weight = diamond_weight_match.group()
-                    else:
-                        # Try to extract from variant if available
-                        try:
-                            quick_buy = await product.query_selector("quick-buy-modal")
-                            if quick_buy:
-                                variant = await quick_buy.get_attribute("handle")
-                                if variant and "variant=" in variant:
-                                    diamond_match = re.search(r"(\d+\.?\d*)\s*(?:ct|tcw|carat)", variant, re.IGNORECASE)
-                                    diamond_weight = diamond_match.group() if diamond_match else "N/A"
-                        except Exception:
-                            pass
+                    diamond_weight_match = re.search(diamond_weight_pattern, description, re.IGNORECASE)
+                    diamond_weight = diamond_weight_match.group() if diamond_weight_match else "N/A"
 
-                    # Generate unique ID and prepare image download
                     unique_id = str(uuid.uuid4())
-                    image_tasks.append((row_num, unique_id, asyncio.create_task(
-                        download_image_async(image_url, product_name, timestamp, image_folder, unique_id)
-                    )))
+                    if image_url and image_url != "N/A":
+                        image_tasks.append((row_num, unique_id, asyncio.create_task(
+                            download_image_async(image_url, product_name, timestamp, image_folder, unique_id)
+                        )))
 
-                    # Append to records and spreadsheet
-                    records.append((unique_id, current_date, page_title, product_name, None, metal_type, price, diamond_weight))
-                    sheet.append([current_date, page_title, product_name, None, metal_type, price, diamond_weight, time_only, image_url])
+                    records.append((unique_id, current_date, page_title, product_name, description, kt, price, diamond_weight, stock_status))
+                    sheet.append([current_date, page_title, product_name, description, kt, price, diamond_weight, time_only, image_url, stock_status])
+                            
+                # Process image downloads
                 for row_num, unique_id, task in image_tasks:
                     try:
                         image_path = await asyncio.wait_for(task, timeout=60)
@@ -241,19 +234,16 @@ async def handle_diamondcollection(url, max_pages):
                                 break
                     except asyncio.TimeoutError:
                         logging.warning(f"Image download timed out for row {row_num}")
-
+                load_more_clicks += 1
                 all_records.extend(records)
                 wb.save(file_path)
                 
         except Exception as e:
-            logging.error(f"Error on page {page_count}: {str(e)}")
+            logging.error(f"Error during scraping: {str(e)}")
             wb.save(file_path)
         finally:
             if page: await page.close()
             if browser: await browser.close()
-            await asyncio.sleep(random.uniform(2, 5))
-
-        page_count += 1
 
     wb.save(file_path)
     log_event(f"Data saved to {file_path}")
